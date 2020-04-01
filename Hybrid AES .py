@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 """
-This is an exercise in secure symmetric-key encryption, implemented in pure
-Python (no external libraries needed).
 
 Original AES-128 implementation by Bo Zhu (http://about.bozhu.me) at 
-https://github.com/bozhu/AES-Python . PKCS#7 padding, CBC mode, PKBDF2, HMAC,
-byte array and string support added by me at https://github.com/boppreh/aes. 
-Other block modes contributed by @righthandabacus.
+https://github.com/bozhu/AES-Python . 
 
-
-Although this is an exercise, the `encrypt` and `decrypt` functions should
-provide reasonable security to encrypted messages.
 """
 
 pc1 = [6, 4, 15, 7, 13, 9, 11, 2, 5, 14, 8, 10, 0, 12, 1, 3]
