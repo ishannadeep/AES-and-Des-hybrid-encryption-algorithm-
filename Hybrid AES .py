@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-
-Original AES-128 implementation by Bo Zhu (http://about.bozhu.me) at 
-https://github.com/bozhu/AES-Python . 
-
+This algorihtm is Hybrid version of original AES algorihtm.Basically design
+for mobiles.This algorihtm has DES permutation function instead of MixColumn function and
+it is much more efficient than the original AES algorithm.
+author : ishan nadeep kalansooriya
+email : ishannadeep.kalansooriya@gmail.com
 """
 
 pc1 = [6, 4, 15, 7, 13, 9, 11, 2, 5, 14, 8, 10, 0, 12, 1, 3]
-fp = [12, 14, 7, 15, 1, 8, 0, 3, 10, 5, 11, 6, 13, 4, 9, 2]
+fp  = [12, 14, 7, 15, 1, 8, 0, 3, 10, 5, 11, 6, 13, 4, 9, 2]
 s_box = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -60,52 +61,22 @@ def inv_sub_bytes(s):
 
 
 def shift_rows(s):
-    s[0][1], s[1][1], s[2][1], s[3][1] = s[1][1], s[2][1], s[3][1], s[0][1]
-    s[0][2], s[1][2], s[2][2], s[3][2] = s[2][2], s[3][2], s[0][2], s[1][2]
-    s[0][3], s[1][3], s[2][3], s[3][3] = s[3][3], s[0][3], s[1][3], s[2][3]
+    s[1][0], s[1][1], s[1][2], s[1][3] = s[1][1], s[1][2], s[1][3], s[1][0]
+    s[2][0], s[2][1], s[2][2], s[2][3] = s[2][2], s[2][3], s[2][0], s[2][1]
+    s[3][0], s[3][1], s[3][2], s[3][3] = s[3][3], s[3][0], s[3][1], s[3][2]
 
 
 def inv_shift_rows(s):
-    s[0][1], s[1][1], s[2][1], s[3][1] = s[3][1], s[0][1], s[1][1], s[2][1]
-    s[0][2], s[1][2], s[2][2], s[3][2] = s[2][2], s[3][2], s[0][2], s[1][2]
-    s[0][3], s[1][3], s[2][3], s[3][3] = s[1][3], s[2][3], s[3][3], s[0][3]
+    s[1][0], s[1][1], s[1][2], s[1][3] = s[1][3], s[1][0], s[1][1], s[1][2]
+    s[2][0], s[2][1], s[2][2], s[2][3] = s[2][2], s[2][3], s[2][0], s[2][1]
+    s[3][0], s[3][1], s[3][2], s[3][3] = s[3][1], s[3][2], s[3][3], s[3][0]
+
 
 def add_round_key(s, k):
+    
     for i in range(4):
         for j in range(4):
             s[i][j] ^= k[i][j]
-
-
-# learned from http://cs.ucsb.edu/~koc/cs178/projects/JT/aes.c
-xtime = lambda a: (((a << 1) ^ 0x1B) & 0xFF) if (a & 0x80) else (a << 1)
-
-
-def mix_single_column(a):
-    # see Sec 4.1.2 in The Design of Rijndael
-    t = a[0] ^ a[1] ^ a[2] ^ a[3]
-    u = a[0]
-    a[0] ^= t ^ xtime(a[0] ^ a[1])
-    a[1] ^= t ^ xtime(a[1] ^ a[2])
-    a[2] ^= t ^ xtime(a[2] ^ a[3])
-    a[3] ^= t ^ xtime(a[3] ^ u)
-
-
-def mix_columns(s):
-    for i in range(4):
-        mix_single_column(s[i])
-
-
-def inv_mix_columns(s):
-    # see Sec 4.1.3 in The Design of Rijndael
-    for i in range(4):
-        u = xtime(xtime(s[i][0] ^ s[i][2]))
-        v = xtime(xtime(s[i][1] ^ s[i][3]))
-        s[i][0] ^= u
-        s[i][1] ^= v
-        s[i][2] ^= u
-        s[i][3] ^= v
-
-    mix_columns(s)
 
 
 r_con = (
@@ -155,6 +126,8 @@ def pad(plaintext):
     padding_len = 16 - (len(plaintext) % 16)
     padding = bytes([padding_len] * padding_len)
     return plaintext + padding
+    
+    
 
 def unpad(plaintext):
     """
@@ -196,34 +169,33 @@ class AES:
         # Initialize round keys with raw key material.
         key_columns = bytes2matrix(master_key)
         iteration_size = len(master_key) // 4
-
         # Each iteration has exactly as many columns as the key material.
         columns_per_iteration = len(key_columns)
-        i = 1
+        p = 1
         while len(key_columns) < (self.n_rounds + 1) * 4:
             # Copy previous word.
             word = list(key_columns[-1])
-
+            
             # Perform schedule_core once every "row".
             if len(key_columns) % iteration_size == 0:
-                # Circular shift.
+                # Circular shift.      
                 word.append(word.pop(0))
                 # Map to S-BOX.
                 word = [s_box[b] for b in word]
                 # XOR with first byte of R-CON, since the others bytes of R-CON are 0.
-                word[0] ^= r_con[i]
-                i += 1
+                word[0] ^= r_con[p]
+                p += 1
             elif len(master_key) == 32 and len(key_columns) % iteration_size == 4:
                 # Run word through S-box in the fourth iteration when using a
                 # 256-bit key.
                 word = [s_box[b] for b in word]
-
             # XOR with equivalent word from previous iteration.
             word = xor_bytes(word, key_columns[-iteration_size])
             key_columns.append(word)
-
+        
         # Group key words in 4x4 byte matrices.
         return [key_columns[4*i : 4*(i+1)] for i in range(len(key_columns) // 4)]
+
     def encryptDecrypt_bock(self, plaintext):
         
         decrypt_block(self, encrypt_block(self, plaintext))
@@ -232,23 +204,18 @@ class AES:
         Encrypts a single block of 16 byte long plaintext.
         """
         assert len(plaintext) == 16
-
         plain_state = bytes2matrix(plaintext)
-
         add_round_key(plain_state, self._key_matrices[0])
         
         for i in range(1, self.n_rounds):
-            
             sub_bytes(plain_state)
-            #shift_rows(plain_state)
-            plain_state=matrix2array(plain_state)
-            
+            shift_rows(plain_state)            
+            plain_state=matrix2array(plain_state)            
             plain_state=array2matrix(permutate(pc1,plain_state))
-            #mix_columns(plain_state)
             add_round_key(plain_state, self._key_matrices[i])
-
+            
         sub_bytes(plain_state)
-        #shift_rows(plain_state)
+        shift_rows(plain_state)
         add_round_key(plain_state, self._key_matrices[-1])
 
         return matrix2bytes(plain_state)
@@ -257,23 +224,20 @@ class AES:
         """
         Decrypts a single block of 16 byte long ciphertext.
         """
+        
         assert len(ciphertext) == 16
 
-        cipher_state = bytes2matrix(ciphertext)
-
+        cipher_state = bytes2matrix(ciphertext)       
         add_round_key(cipher_state, self._key_matrices[-1])
-        #inv_shift_rows(cipher_state)
+        inv_shift_rows(cipher_state)
         inv_sub_bytes(cipher_state)
-        
-        
+
         for i in range(self.n_rounds - 1, 0, -1):
-            
+
             add_round_key(cipher_state, self._key_matrices[i])
             cipher_state=matrix2array(cipher_state)
-            
             cipher_state=array2matrix(permutate(fp,cipher_state))
-            #inv_mix_columns(cipher_state)
-            #inv_shift_rows(cipher_state)
+            inv_shift_rows(cipher_state)
             inv_sub_bytes(cipher_state)
 
         add_round_key(cipher_state, self._key_matrices[0])
@@ -287,21 +251,16 @@ class AES:
         """
         
         assert len(iv) == 16
-
         plaintext = pad(plaintext)
-
         blocks = []
         
         for plaintext_block in split_blocks(plaintext):
             # CBC mode encrypt: encrypt(plaintext_block XOR previous)
             block = self.encrypt_block(plaintext_block)
             blocks.append(block)
-            
 
         return b''.join(blocks)
-        
-        
-       
+
         
     def decrypt_cbc(self, ciphertext, iv):
         """
@@ -329,7 +288,7 @@ from hmac import new as new_hmac, compare_digest
 AES_KEY_SIZE = 16
 IV_SIZE = 16
 
-def encrypt(key, plaintext, workload=100000):
+def encrypt(key, plaintext):
     """
     Encrypts `plaintext` with `key` using AES-128, an HMAC to verify integrity,
     and PBKDF2 to stretch the given key.
@@ -341,7 +300,7 @@ def encrypt(key, plaintext, workload=100000):
         key = key.encode('utf-8')
     if isinstance(plaintext, str):
         plaintext = plaintext.encode('utf-8')
-    
+    print(len(plaintext))
 
     iv ='1234567891234567'
     iv=bytes(iv.encode('utf-8'))
@@ -351,7 +310,7 @@ def encrypt(key, plaintext, workload=100000):
     return ciphertext
 
 
-def decrypt(key, ciphertext, workload=100000):
+def decrypt(key, ciphertext):
     """
     Decrypts `plaintext` with `key` using AES-128, an HMAC to verify integrity,
     and PBKDF2 to stretch the given key.
